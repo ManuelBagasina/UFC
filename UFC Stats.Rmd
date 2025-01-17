@@ -1,0 +1,273 @@
+---
+title: "HW 3"
+author: "Manuelito Bagasina"
+date: "2023-10-13"
+output: ioslides_presentation
+subtitle: UFC Statistics
+---
+
+<style type="text/css">
+body p, div, h1, h2, h3, h4, h5 {
+color: black;
+font-family: Modern Computer Roman;
+}
+slides > slide.title-slide hgroup h1 {
+color: #8C1D40; 
+}
+h2 {
+color: #8C1D40; 
+}
+slides > slide {
+background: linear-gradient(#ffffff, #ffffff 85%, #ffffff);
+background-color: white;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r, eval=TRUE, echo=FALSE, message = FALSE}
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(shiny)
+library(plotly)
+
+# Load the UFC statistics dataset
+ufc_data <- read.csv("data.csv")
+ufc_data <- na.omit(ufc_data)
+
+
+
+```
+
+```{r,echo=FALSE}
+#Some data fixing
+
+# Calculate win percentage for red fighters
+ufc_data$R_win_percentage <- ufc_data$R_wins / (ufc_data$R_wins + ufc_data$R_losses)
+
+# Calculate win percentage for blue fighters
+ufc_data$B_win_percentage <- ufc_data$B_wins / (ufc_data$B_wins + ufc_data$B_losses)
+
+# Combine red and blue fighter statistics
+combined_data <- ufc_data %>%
+  mutate(
+    Fighter = paste0(R_fighter, " vs ", B_fighter),
+    Win_Percentage = ifelse(R_win_percentage > B_win_percentage, R_win_percentage, B_win_percentage),
+    Significant_Strikes_Landed = ifelse(R_avg_SIG_STR_landed > B_avg_SIG_STR_landed, R_avg_SIG_STR_landed, B_avg_SIG_STR_landed),
+    Significant_Strikes_Attempted = ifelse(R_avg_SIG_STR_att > B_avg_SIG_STR_att, R_avg_SIG_STR_att, B_avg_SIG_STR_att),
+    Takedowns_Landed = ifelse(R_avg_TD_landed > B_avg_TD_landed, R_avg_TD_landed, B_avg_TD_landed),
+    Takedowns_Attempted = ifelse(R_avg_TD_att > B_avg_TD_att, R_avg_TD_att, B_avg_TD_att)
+  ) %>%
+  select(Fighter, Win_Percentage, Significant_Strikes_Landed, Significant_Strikes_Attempted, Takedowns_Landed, Takedowns_Attempted)
+
+```
+
+
+
+# Introduction to UFC Statistics
+
+
+
+## Introduction to UFC Statistics
+
+- Welcome, to a statistics presentation on the Ultimate Fight Championship (UFC).
+- The UFC is a renowned Mixed Martial Arts (MMA) fight promoter that tries to answer the question:
+- Which fighting style is best when you strip away the rules that separate different martial arts?
+
+
+## Introduction to UFC Statistics
+
+- In this presentation, we will answer the question that's asked by a lot of MMA fans: Striking or Grappling?
+- We will take a look to see if a striker or a grappler has a better chance of winning
+- To do this, we'll be using a comprehensive dataset available from Kaggle [UFC Data on Kaggle](https://www.kaggle.com/datasets/rajeevw/ufcdata).
+
+# Hypothesis
+
+## Hypothesis
+- All fights start standing and all fights end on the ground
+- All UFC Champions excel in both striking and grappling
+- One fighter, however, was so dominant that it would formulate the hypothesis of this presentation
+- Khabib Nurmagomedov is a former Lightweight Champion with an undefeated streak
+- He never bled in the sport, and his grappling is the best in the history of the UFC. He WILL take you down
+
+
+\[
+H_0: \text{Better Grappling} = \text{ Takedowns} = \text{ Wins }
+\]
+
+# Some fun trivia
+
+## Strikes attempted and landed
+- Here we can see the striking performance of the UFC, if you wish to see matches with high strike attempts and high percentage on strikes landed, look to the far right
+
+## Code for the plotly
+```{r, echo=TRUE}
+striking_plot <- 
+  plot_ly(data = combined_data, 
+          x = ~Significant_Strikes_Attempted, 
+          y = ~Significant_Strikes_Landed / Significant_Strikes_Attempted,
+          marker = list(color = "blue"),
+          text = ~Fighter, ids = ~Fighter, 
+          type = "scatter", mode = "markers") %>%
+  layout(
+    title = "Striking Performance in UFC",
+    xaxis = list(title = "Strikes Attempted"),
+    yaxis = list(title = "Strikes Percentage"),
+    showlegend = FALSE
+  )
+
+```
+
+## Strikes attempted and landed
+```{r}
+striking_plot
+```
+
+
+
+## Takedowns attempted and landed
+- Here we can see the grappling performance of the UFC, if you wish to see matches with high takedown attempts and high percentage on takedowns landed, look to the far right
+
+```{r,echo=FALSE}
+grappling_plot <- plot_ly(data = combined_data, x = ~Takedowns_Landed, y = ~Takedowns_Landed / Takedowns_Attempted,
+                      marker = list(color = "green"),
+                      text = ~Fighter, ids = ~Fighter, type = "scatter", mode = "markers") %>%
+  layout(
+    title = "Grappling Performance in UFC",
+    xaxis = list(title = "Takedowns Landed"),
+    yaxis = list(title = "Takedown Percentage"),
+    showlegend = FALSE
+  )
+
+grappling_plot
+
+```
+
+ 
+# The Data
+
+## Defining the variables:
+- Let \(W\) be the number of wins by the fighter.
+- Let \(L\) be the number of losses by the fighter.
+- Then, the win percentage (\(P_{\text{win}}\)) can be calculated as:
+
+\[
+P_{\text{win}} = \frac{W}{W + L}
+\]
+
+- It's the ratio of wins to the total number of fights (wins plus losses).
+
+
+
+## Striking
+- All fights start standing up
+- We will take a look at the correlation between strikes attempted, strikes percentage, and compare this to win percentage
+
+
+- Here we have the strike percentage calculated
+- Let \(SA\) be significant strikes attempted
+- Let \(SL\) be significant strikes landed
+- Then significant strike percentage be (\(S_{\text{%}}\)):
+\[
+S_{\text{%}} = \frac{SL}{SA}
+\]
+
+
+## Striking Attempts
+
+```{r, echo=FALSE}
+
+# Strike attempted against win percentage
+ggplot(data = combined_data, aes(x = Significant_Strikes_Attempted, y = Win_Percentage)) +
+  geom_point(color = "blue", alpha = 1, na.rm = TRUE) +
+  labs(
+    title = "Strikes Attempted vs. Win Percentage",
+    x = "Strikes Attempted",
+    y = "Win Percentage"
+  ) +
+  theme_minimal()
+```
+
+## Striking Percentage
+```{r, echo=FALSE}
+
+# Strike percentage against win percentage
+ggplot(data = combined_data, aes(x = Significant_Strikes_Landed / Significant_Strikes_Attempted, y = Win_Percentage)) +
+ geom_point(color = "blue", alpha = 1, na.rm = TRUE) +
+  labs(
+    title = "Strikes Percentage vs. Win Percentage",
+    x = "Strikes Percentage",
+    y = "Win Percentage"
+  ) +
+  theme_minimal()
+
+```
+
+
+## Grappling
+- All fights end up on the ground
+- We will take a look at the correlation between takedowns, takedown percentage, and compare this to win percentage
+
+- Here we have the takedown percentage calculated
+- Let \(TL\) be takedowns landed
+- Let \(TA\) be takedowns attempted
+- Then, the takedown percentage (\(TD_{\%}\)) can be calculated as:
+\[
+TD_{\%} = \frac{TL}{TA}
+\]
+
+## Grappling Attempts
+
+```{r, echo=FALSE}
+
+# Takedowns against win percentage
+ggplot(data = combined_data, aes(x = Takedowns_Landed, y = Win_Percentage)) +
+  geom_point(color = "blue", alpha = 1, na.rm = TRUE) +
+  labs(
+    title = "Takedowns vs. Win Percentage",
+    x = "Takedowns Landed",
+    y = "Win Percentage"
+  ) +
+  theme_minimal()
+```
+
+## Grappling Percentage
+
+```{r, echo=FALSE}
+
+# Takedown percentage against win percentage
+ggplot(data = combined_data, aes(x = Takedowns_Landed / Takedowns_Attempted, y = Win_Percentage)) +
+  geom_point(color = "blue", alpha = 1, na.rm = TRUE) +  
+  labs(
+    title = "Takedown Percentage vs. Win Percentage",
+    x = "Takedown Percentage",
+    y = "Win Percentage"
+  ) +
+  theme_minimal()
+
+```
+
+
+## Interpreting the intial data
+- It seems that simply attempting a strike or a takedown isn't enough to guarantee a win
+- We can see in the higher a percentage for an attack, whether strike or takedown, the higher the chance of winning
+
+# Conclusion
+
+## Conclusion
+- We can see from the data that it doesn't matter if you're primarily a grappler or striker
+- It doesn't matter if you have the world's fanciest kick or the world's fastest takedown
+- What gurantees a win, in the end, is the strike that lands, the takedown that actually takes the opponent down
+
+\[
+H_A: \text{Better Fighting} = \text{ More attempts landing} = \text{ Wins }
+\]
+
+
+
+
+
